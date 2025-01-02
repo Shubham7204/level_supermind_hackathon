@@ -2,6 +2,8 @@ import requests
 import streamlit as st
 from dotenv import load_dotenv
 import os
+import json
+from typing import Optional
 
 # Load environment variables
 load_dotenv()
@@ -74,31 +76,49 @@ st.markdown("""
 
 # Fetch values from the environment
 BASE_API_URL = "https://api.langflow.astra.datastax.com"
-LANGFLOW_ID = os.getenv("LANGFLOW_ID")
-FLOW_ID = os.getenv("FLOW_ID")
+LANGFLOW_ID = "813f6aec-818f-44b4-adea-f29483357663"
+FLOW_ID = "48cdc51c-b0f4-4237-88f9-5ecc89f9c288"
 APPLICATION_TOKEN = os.getenv("APP_TOKEN")
-ENDPOINT = "socialmedia"
+ENDPOINT = "socialmediacsv"
 
-def run_flow(message: str) -> dict:
+# Default tweaks
+TWEAKS = {
+    "ChatInput-r9uHS": {},
+    "ChatOutput-Su9uB": {},
+    "Agent-YzW17": {},
+    "Prompt-kLiXa": {},
+    "AstraDB-CXdlG": {},
+    "ParseData-NWFbC": {},
+    "File-MyCd7": {},
+    "SplitText-TourB": {},
+    "AstraDB-KtU2q": {},
+    "CSVAgent-NdG1S": {},
+    "CombineText-yv0Du": {},
+    "OpenAIModel-VUFYx": {},
+    "Agent-R20Wf": {}
+}
+
+def run_flow(message: str, tweaks: Optional[dict] = None) -> str:
+    """
+    Run the flow with the provided message and tweaks.
+    """
     api_url = f"{BASE_API_URL}/lf/{LANGFLOW_ID}/api/v1/run/{ENDPOINT}"
-
     payload = {
         "input_value": message,
         "output_type": "chat",
         "input_type": "chat",
     }
+    if tweaks:
+        payload["tweaks"] = tweaks
 
     headers = {"Authorization": f"Bearer {APPLICATION_TOKEN}", "Content-Type": "application/json"}
     response = requests.post(api_url, json=payload, headers=headers)
-
     response_data = response.json()
 
-    if 'outputs' in response_data and len(response_data['outputs']) > 0:
-        output_message = response_data["outputs"][0].get("outputs", [{}])[0].get("results", {}).get("message", {}).get("text", "No text in the response")
+    if 'outputs' in response_data and response_data['outputs']:
+        return response_data['outputs'][0].get("outputs", [{}])[0].get("results", {}).get("message", {}).get("text", "No text in the response")
     else:
-        output_message = "No valid outputs received"
-
-    return output_message
+        return "No valid outputs received"
 
 def main():
     # Header with icon
@@ -138,7 +158,7 @@ def main():
     if submit_button and message.strip():
         try:
             with st.spinner("🤔 Thinking..."):
-                response_message = run_flow(message)
+                response_message = run_flow(message, tweaks=TWEAKS)
             
             # Add to history
             st.session_state.chat_history.append({
